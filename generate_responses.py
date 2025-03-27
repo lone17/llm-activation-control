@@ -6,7 +6,12 @@ from vllm.control_vectors.request import ControlVectorRequest
 from vllm.lora.request import LoRARequest
 from vllm.sampling_params import SamplingParams
 
-from llm_activation_control.utils import get_harmful_instructions, get_harmful_instructions_jp, get_harmless_instructions, get_harmless_instructions_jp
+from llm_activation_control.utils import (
+    get_harmful_instructions,
+    get_harmful_instructions_jp,
+    get_harmless_instructions,
+    get_harmless_instructions_jp,
+)
 
 # CHAT_TEMPLATES = {
 #     "qwen": (
@@ -22,19 +27,22 @@ from llm_activation_control.utils import get_harmful_instructions, get_harmful_i
 data_type = "harmful"
 language = "en"
 model_ids = [
-    "meta-llama/Llama-3.1-8B-Instruct",
-    "meta-llama/Llama-3.2-3B-Instruct",
-    "google/gemma-2-9b-it",
-    # "Qwen/Qwen2.5-14B-Instruct",
-    # "Qwen/Qwen2.5-7B-Instruct",
-    # "Qwen/Qwen2.5-3B-Instruct",
+    "Qwen/Qwen2.5-3B-Instruct",
+    "Qwen/Qwen2.5-7B-Instruct",
+    "Qwen/Qwen2.5-14B-Instruct",
+    # "meta-llama/Llama-3.2-3B-Instruct",
+    # "meta-llama/Llama-3.1-8B-Instruct",
+    # "google/gemma-2-9b-it",
 ]
 included_direction_ids = ["dir_random"]
+adaptive_mode = 1
+
+sampling_params = SamplingParams(temperature=0, max_tokens=512)
+
 
 for model_id in model_ids:
     model_family, model_name = model_id.split("/")
     output_path = Path("/home/ian/repos/llm-activation-control/output/") / model_name
-
 
     if data_type == "harmless":
         if language == "en":
@@ -47,7 +55,6 @@ for model_id in model_ids:
         elif language == "jp":
             data_train, data_test = get_harmful_instructions_jp()
 
-
     llm = LLM(
         model=model_id,
         enable_control_vector=True,
@@ -58,7 +65,6 @@ for model_id in model_ids:
         max_seq_len_to_capture=8192,
         # gpu_memory_utilization=0.8,
     )
-    sampling_params = SamplingParams(temperature=0, max_tokens=512)
 
     # chat_template = CHAT_TEMPLATES.get(model_family.lower(), None)
 
@@ -68,7 +74,8 @@ for model_id in model_ids:
                 "role": "user",
                 "content": message,
             }
-        ] for message in data_test
+        ]
+        for message in data_test
     ]
 
     # baseline_responses = []
@@ -90,10 +97,12 @@ for model_id in model_ids:
         except ValueError:
             print(f"Skipping {steering_config_file}")
             continue
-        
-        if (
-            included_direction_ids 
-            and all([dir_id not in steering_config_file.stem for dir_id in included_direction_ids])
+
+        if included_direction_ids and all(
+            [
+                dir_id not in steering_config_file.stem
+                for dir_id in included_direction_ids
+            ]
         ):
             print(f"Skipping {steering_config_file}")
             continue
@@ -109,17 +118,26 @@ for model_id in model_ids:
                 scale=10.0,
                 target_degree=degree,
                 keep_norm=False,
+                adaptive_mode=adaptive_mode,
             )
-            
+
             outputs = llm.chat(
                 conversations,
                 sampling_params=sampling_params,
                 # chat_template=chat_template,
-                control_vector_request=control_vector_request
+                control_vector_request=control_vector_request,
             )
             steered_responses[degree] = [item.outputs[0].text for item in outputs]
 
-        with open(output_path / f"{data_type}-{lang_code}-{first_dir}-{second_dir}-rotated.json", "w") as f:
+        adaptive_postfix = (
+            "rotated" if adaptive_mode == 0 else f"adaptive_{adaptive_mode}"
+        )
+        with open(
+            output_path
+            / f"{data_type}-{lang_code}-{first_dir}-{second_dir}-{adaptive_postfix}.json",
+            "w",
+            encoding="utf-8",
+        ) as f:
             json.dump(steered_responses, f, indent=4)
-        
+
     del llm
