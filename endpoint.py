@@ -7,8 +7,6 @@ import vllm  # assuming vllm is installed and contains class LLM
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from transformers import AutoTokenizer
-
-# New imports for steering control
 from vllm.control_vectors.request import ControlVectorRequest
 from vllm.sampling_params import SamplingParams
 
@@ -37,7 +35,7 @@ def get_model(model_id):
 
 
 @cache
-def get_steering_config_path(model_id, direction_id):
+def get_steering_config_path(model_id, direction_id, language_id):
     model_family, model_name = model_id.split("/")
     output_path = Path("/home/ian/repos/llm-activation-control/output/") / model_name
     for steering_config_file in output_path.glob(
@@ -47,7 +45,7 @@ def get_steering_config_path(model_id, direction_id):
             continue
         try:
             _, lang_code, first_dir, second_dir = steering_config_file.stem.split("-")
-            if lang_code != language and lang_code != "xx":
+            if lang_code != language_id and lang_code != "xx":
                 continue
         except ValueError:
             print(f"Skipping {steering_config_file}")
@@ -60,7 +58,7 @@ def get_steering_config_path(model_id, direction_id):
 app = FastAPI()
 
 data_type = "harmful"
-language = "en"
+language_id = "en"
 model_id = (
     # "Qwen/Qwen2.5-3B-Instruct"
     # "Qwen/Qwen2.5-7B-Instruct"
@@ -85,7 +83,9 @@ async def create_chat_completion(rotation_degree, request: CompletionRequest):
         llm = get_model(requested_model_id)
         model_id = requested_model_id
 
-    steering_config_path = get_steering_config_path(requested_model_id, direction_id)
+    steering_config_path = get_steering_config_path(
+        requested_model_id, direction_id, language_id
+    )
     if steering_config_path is None:
         raise HTTPException(status_code=404, detail="Steering config not found")
 
@@ -147,6 +147,10 @@ async def create_chat_completion(rotation_degree, request: CompletionRequest):
                     )
                     for token in item.prompt_logprobs
                 ]
+
+                # this is not the true prompt logprobs, but it doesn't matter for now
+                # because the benchmark I used only need the logprobs of the generation
+                # tokens
                 prompt_token_logprobs = [
                     list(item.values())[0] if item else None
                     for item in prompt_top_logprobs

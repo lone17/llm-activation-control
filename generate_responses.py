@@ -6,12 +6,7 @@ from vllm.control_vectors.request import ControlVectorRequest
 from vllm.lora.request import LoRARequest
 from vllm.sampling_params import SamplingParams
 
-from llm_activation_control.utils import (
-    get_harmful_instructions,
-    get_harmful_instructions_jp,
-    get_harmless_instructions,
-    get_harmless_instructions_jp,
-)
+from llm_activation_control.utils import get_input_data
 
 # CHAT_TEMPLATES = {
 #     "qwen": (
@@ -25,16 +20,17 @@ from llm_activation_control.utils import (
 # }
 
 data_type = "harmful"
-language = "en"
+language_id = "en"
 model_ids = [
-    "Qwen/Qwen2.5-3B-Instruct",
-    "Qwen/Qwen2.5-7B-Instruct",
-    "Qwen/Qwen2.5-14B-Instruct",
-    # "meta-llama/Llama-3.2-3B-Instruct",
-    # "meta-llama/Llama-3.1-8B-Instruct",
-    # "google/gemma-2-9b-it",
+    # "Qwen/Qwen2.5-3B-Instruct",
+    # "Qwen/Qwen2.5-7B-Instruct",
+    # "Qwen/Qwen2.5-14B-Instruct",
+    "meta-llama/Llama-3.2-3B-Instruct",
+    "meta-llama/Llama-3.1-8B-Instruct",
+    "google/gemma-2-9b-it",
 ]
-included_direction_ids = ["dir_random"]
+included_direction_ids = ["max_sim"]
+excluded_direction_ids = ["dir_random"]
 adaptive_mode = 1
 
 sampling_params = SamplingParams(temperature=0, max_tokens=512)
@@ -44,16 +40,7 @@ for model_id in model_ids:
     model_family, model_name = model_id.split("/")
     output_path = Path("/home/ian/repos/llm-activation-control/output/") / model_name
 
-    if data_type == "harmless":
-        if language == "en":
-            data_train, data_test = get_harmful_instructions()
-        elif language == "jp":
-            data_train, data_test = get_harmless_instructions_jp()
-    elif data_type == "harmful":
-        if language == "en":
-            data_train, data_test = get_harmful_instructions()
-        elif language == "jp":
-            data_train, data_test = get_harmful_instructions_jp()
+    data_train, data_test = get_input_data(data_type, language_id)
 
     llm = LLM(
         model=model_id,
@@ -92,21 +79,23 @@ for model_id in model_ids:
     for steering_config_file in output_path.glob(f"steering_config-*.npy"):
         try:
             _, lang_code, first_dir, second_dir = steering_config_file.stem.split("-")
-            if lang_code != language and lang_code != "xx":
+            if lang_code != language_id and lang_code != "xx":
                 continue
         except ValueError:
             print(f"Skipping {steering_config_file}")
             continue
 
-        if included_direction_ids and all(
-            [
-                dir_id not in steering_config_file.stem
-                for dir_id in included_direction_ids
-            ]
+        if any(
+            excluded_dir_id in steering_config_file.stem
+            for excluded_dir_id in excluded_direction_ids
+        ) or any(
+            included_dir_id not in steering_config_file.stem
+            for included_dir_id in included_direction_ids
         ):
             print(f"Skipping {steering_config_file}")
             continue
 
+        print(f"Processing {steering_config_file}")
         steered_responses = {}
         for degree in range(0, 360, 10):
             control_vector_name = f"{steering_config_file.stem}-target_degree_{degree}"
@@ -129,15 +118,15 @@ for model_id in model_ids:
             )
             steered_responses[degree] = [item.outputs[0].text for item in outputs]
 
-        adaptive_postfix = (
+        adaptive_mode_label = (
             "rotated" if adaptive_mode == 0 else f"adaptive_{adaptive_mode}"
         )
         with open(
             output_path
-            / f"{data_type}-{lang_code}-{first_dir}-{second_dir}-{adaptive_postfix}.json",
+            / f"{data_type}-{lang_code}-{first_dir}-{second_dir}-{adaptive_mode_label}.json",
             "w",
             encoding="utf-8",
         ) as f:
-            json.dump(steered_responses, f, indent=4)
+            json.dump(steered_responses, f, indent=4, ensure_ascii=False)
 
     del llm
