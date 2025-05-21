@@ -470,6 +470,6 @@ if __name__ == "__main__":
                 data_type="harmful",
                 language="en",
                 output_path="/home/ian/repos/llm-activation-control/output/",
-                included_direction_ids=["max_sim", "pca_0"],
+                included_direction_ids=["max_norm", "pca_0"],
                 adaptive_mode=1,
             )

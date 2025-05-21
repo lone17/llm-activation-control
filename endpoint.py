@@ -2,6 +2,7 @@ import time
 from functools import cache
 from pathlib import Path
 from traceback import print_exc
+from typing import Any, Dict, List, Optional
 
 import vllm  # assuming vllm is installed and contains class LLM
 from fastapi import FastAPI, HTTPException
@@ -30,7 +31,9 @@ def get_model(model_id):
         enable_control_vector=True,
         max_control_vectors=1,
         max_seq_len_to_capture=8096,
-        gpu_memory_utilization=0.7,
+        gpu_memory_utilization=0.6,
+        max_model_len=4096,
+        quantization="fp8",
     )
 
 
@@ -55,29 +58,32 @@ def get_steering_config_path(model_id, direction_id, language_id):
     return None
 
 
+# cuda 0 uvicorn endpoint:app --host 0.0.0.0 --port 9900
 app = FastAPI()
 
 data_type = "harmful"
-language_id = "en"
+LANGUAGE = "en"
 model_id = (
-    # "Qwen/Qwen2.5-3B-Instruct"
-    # "Qwen/Qwen2.5-7B-Instruct"
-    # "Qwen/Qwen2.5-14B-Instruct"
-    # "meta-llama/Llama-3.2-3B-Instruct"
-    # "meta-llama/Llama-3.1-8B-Instruct"
-    "google/gemma-2-9b-it"
+    # "Qwen/Qwen2.5-3B-Instruct"  # 9900
+    # "Qwen/Qwen2.5-7B-Instruct"  # 9901
+    # "Qwen/Qwen2.5-14B-Instruct"  # 9902
+    # "Qwen/Qwen2.5-32B-Instruct"  # 9903
+    "meta-llama/Llama-3.2-3B-Instruct"  # 9004
+    # "meta-llama/Llama-3.1-8B-Instruct"  # 9005
+    # "google/gemma-2-9b-it"  # 9006
 )
-direction_id = "dir_max_sim"
+direction_id = "dir_max_norm"
 llm = get_model(model_id)
 tokenizer = AutoTokenizer.from_pretrained(model_id)
 
 
 # New endpoint for chat completions compatible with OpenAI API
 @app.post("/angular_steering/{rotation_degree}")
-async def create_chat_completion(rotation_degree, request: CompletionRequest):
+async def create_completion(rotation_degree, request: CompletionRequest):
     global model_id, llm
 
     requested_model_id = request.model
+    language_id = LANGUAGE
 
     if not globals().get("model_id") or requested_model_id != model_id:
         llm = get_model(requested_model_id)
@@ -200,3 +206,123 @@ async def process_single_chat(request: CompletionRequest):
     if not globals().get("model_id") or requested_model_id != model_id:
         llm = get_model(requested_model_id)
         model_id = requested_model_id
+
+
+class ChatCompletionMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatCompletionRequest(BaseModel):
+    class Config:
+        extra = "allow"
+
+    model: str
+    messages: List[ChatCompletionMessage]
+    max_tokens: int = 512
+    temperature: float = 1.0
+    top_p: float = 1.0
+
+
+@app.post("/angular_steering/{language_id}/{rotation_degree}/v1/chat/completions")
+async def create_chat_completion_with_steering(
+    language_id: str, rotation_degree: str, request: ChatCompletionRequest
+):
+    global model_id, llm
+
+    requested_model_id = request.model
+
+    if not globals().get("model_id") or requested_model_id != model_id:
+        llm = get_model(requested_model_id)
+        model_id = requested_model_id
+
+    steering_config_path = get_steering_config_path(
+        requested_model_id, direction_id, language_id
+    )
+    if steering_config_path is None:
+        raise HTTPException(status_code=404, detail="Steering config not found")
+
+    cv_request = None
+    if rotation_degree != "none":
+        control_vector_name = (
+            f"{model_id}/{steering_config_path}/{language_id}/{rotation_degree}"
+        )
+        control_vector_id = abs(hash((control_vector_name, rotation_degree))) % 999999
+        cv_request = ControlVectorRequest(
+            control_vector_name=control_vector_name,
+            control_vector_id=control_vector_id,
+            control_vector_local_path=steering_config_path,
+            scale=10.0,
+            target_degree=int(rotation_degree),
+            keep_norm=False,
+            adaptive_mode=1,
+        )
+
+    # Convert the ChatCompletionRequest to a format suitable for llm.chat
+    messages = []
+    for msg in request.messages:
+        messages.append({"role": msg.role, "content": msg.content})
+
+    # Prepare sampling parameters
+    __params = request.model_dump()
+    __params.pop("model", None)
+    __params.pop("messages", None)
+    sampling_params = SamplingParams(**__params)
+
+    try:
+        # Use the chat function instead of generate
+        outputs = llm.chat(
+            messages=messages,
+            sampling_params=sampling_params,
+            control_vector_request=cv_request,
+        )
+
+        # apply chat template and call generate
+        # prompts = tokenizer.apply_chat_template(
+        #     messages, add_generation_prompt=True, tokenize=False
+        # )
+
+        # import pdb
+
+        # pdb.set_trace()
+
+        # outputs = llm.generate(
+        #     prompts=prompts,
+        #     sampling_params=sampling_params,
+        #     control_vector_request=cv_request,
+        # )
+
+        responses = []
+        for item in outputs:
+            # Extract the assistant's response from the chat output
+            text_output = item.outputs[0].text
+
+            responses.append(
+                {
+                    "id": "chatcmpl-" + str(int(time.time())),
+                    "object": "chat.completion",
+                    "created": int(time.time()),
+                    "model": request.model,
+                    "choices": [
+                        {
+                            "index": 0,
+                            "message": {"role": "assistant", "content": text_output},
+                            "finish_reason": "stop",
+                        }
+                    ],
+                    "usage": {
+                        "prompt_tokens": len(item.prompt_token_ids),
+                        "completion_tokens": len(item.outputs[0].token_ids),
+                        "total_tokens": (
+                            len(item.prompt_token_ids) + len(item.outputs[0].token_ids)
+                        ),
+                    },
+                }
+            )
+
+        if len(responses) == 1:
+            return responses[0]
+        return responses
+    except Exception as e:
+        print_exc()
+        raise HTTPException(status_code=500, detail=str(e)) from e

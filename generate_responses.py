@@ -25,11 +25,11 @@ model_ids = [
     # "Qwen/Qwen2.5-3B-Instruct",
     # "Qwen/Qwen2.5-7B-Instruct",
     # "Qwen/Qwen2.5-14B-Instruct",
-    "meta-llama/Llama-3.2-3B-Instruct",
-    "meta-llama/Llama-3.1-8B-Instruct",
+    # "meta-llama/Llama-3.2-3B-Instruct",
+    # "meta-llama/Llama-3.1-8B-Instruct",
     "google/gemma-2-9b-it",
 ]
-included_direction_ids = ["max_sim"]
+included_direction_ids = ["max_norm"]
 excluded_direction_ids = ["dir_random"]
 adaptive_mode = 1
 

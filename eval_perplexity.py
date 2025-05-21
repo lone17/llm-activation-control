@@ -147,12 +147,12 @@ data_type = "harmful"
 language_id = "en"
 generation_only = False
 model_ids = (
-    "Qwen/Qwen2.5-3B-Instruct",
-    "meta-llama/Llama-3.2-3B-Instruct",
-    "Qwen/Qwen2.5-7B-Instruct",
+    # "Qwen/Qwen2.5-3B-Instruct",
+    # "meta-llama/Llama-3.2-3B-Instruct",
+    # "Qwen/Qwen2.5-7B-Instruct",
     "Qwen/Qwen2.5-14B-Instruct",
-    "meta-llama/Llama-3.1-8B-Instruct",
-    "google/gemma-2-9b-it",
+    # "meta-llama/Llama-3.1-8B-Instruct",
+    # "google/gemma-2-9b-it",
 )
 train_data, input_data = get_input_data(data_type, language_id)
 
@@ -160,7 +160,7 @@ for model_id in model_ids:
     model_family, model_name = model_id.split("/")
     data_path = Path("/home/ian/repos/llm-activation-control/output/") / model_name
 
-    included_config_terms = ["max_sim", "baseline"]
+    included_config_terms = ["max_norm", "baseline"]
     excluded_config_terms = ["dir_random"]
 
     tokenizer = AutoTokenizer.from_pretrained(model_id)
@@ -194,6 +194,7 @@ for model_id in model_ids:
                 tokenizer,
                 input_data,
                 generation_output,
+                generation_only=generation_only,
             )
         else:
             perplexity_scores = {}
@@ -220,6 +221,12 @@ for model_id in model_ids:
         output_path = data_path / "eval-perplexity-generation_only.json"
     else:
         output_path = data_path / "eval-perplexity.json"
+
+    if output_path.exists():
+        with open(output_path, "r") as f:
+            existing_data = json.load(f)
+        existing_data.update(final_output)
+        final_output = existing_data
 
     with open(output_path, "w") as f:
         json.dump(final_output, f, indent=4)

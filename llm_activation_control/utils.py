@@ -1,3 +1,4 @@
+from functools import cache
 import io
 import requests
 import pandas as pd
@@ -82,3 +83,19 @@ def get_harmless_instructions_jp():
 
     train, test = train_test_split(instructions, test_size=0.2, random_state=42)
     return train, test
+
+
+@cache
+def get_input_data(data_type, language_id):
+    if data_type == "harmless":
+        if language_id == "en":
+            data_train, data_test = get_harmful_instructions()
+        elif language_id == "jp":
+            data_train, data_test = get_harmless_instructions_jp()
+    elif data_type == "harmful":
+        if language_id == "en":
+            data_train, data_test = get_harmful_instructions()
+        elif language_id == "jp":
+            data_train, data_test = get_harmful_instructions_jp()
+
+    return data_train, data_test
