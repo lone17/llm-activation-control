@@ -158,9 +158,9 @@ train_data, input_data = get_input_data(data_type, language_id)
 
 for model_id in model_ids:
     model_family, model_name = model_id.split("/")
-    data_path = Path("/home/ian/repos/llm-activation-control/output/") / model_name
+    data_path = Path("output/") / model_name
 
-    included_config_terms = ["max_norm", "baseline"]
+    included_config_terms = ["max_sim", "baseline"]
     excluded_config_terms = ["dir_random"]
 
     tokenizer = AutoTokenizer.from_pretrained(model_id)

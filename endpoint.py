@@ -40,7 +40,7 @@ def get_model(model_id):
 @cache
 def get_steering_config_path(model_id, direction_id, language_id):
     model_family, model_name = model_id.split("/")
-    output_path = Path("/home/ian/repos/llm-activation-control/output/") / model_name
+    output_path = Path("output") / model_name
     for steering_config_file in output_path.glob(
         f"steering_config-*{direction_id}*.npy"
     ):
@@ -65,10 +65,10 @@ data_type = "harmful"
 LANGUAGE = "en"
 model_id = (
     # "Qwen/Qwen2.5-3B-Instruct"  # 9900
-    # "Qwen/Qwen2.5-7B-Instruct"  # 9901
+    "Qwen/Qwen2.5-7B-Instruct"  # 9901
     # "Qwen/Qwen2.5-14B-Instruct"  # 9902
     # "Qwen/Qwen2.5-32B-Instruct"  # 9903
-    "meta-llama/Llama-3.2-3B-Instruct"  # 9004
+    # "meta-llama/Llama-3.2-3B-Instruct"  # 9004
     # "meta-llama/Llama-3.1-8B-Instruct"  # 9005
     # "google/gemma-2-9b-it"  # 9006
 )
