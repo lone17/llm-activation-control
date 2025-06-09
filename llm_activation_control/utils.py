@@ -1,7 +1,8 @@
-from functools import cache
 import io
-import requests
+from functools import cache
+
 import pandas as pd
+import requests
 from datasets import load_dataset
 from sklearn.model_selection import train_test_split
 

@@ -1,7 +1,8 @@
-tinyHellaswag*
 wandb*
-output/**/*.npy
+# output/**/*.npy
 __pycache__/
 .ipynb_checkpoints/
 *.egg-info/
 output/**/tinyArc/
+benchmarks/max_norm/
+benchmarks/**/samples*
