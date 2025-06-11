@@ -10,6 +10,7 @@ import litellm
 import numpy as np
 import torch
 from transformers import AutoTokenizer
+from configs import MAX_SIM_DIR_ID
 from vllm import LLM, SamplingParams
 from vllm.distributed.parallel_state import destroy_model_parallel
 
@@ -428,9 +429,9 @@ def evaluate_model(
 
         if rotation_plane_id not in eval_results:
             eval_results[rotation_plane_id] = {}
-        else:
-            print(f"Skipping {rotation_plane_id} as it already exists")
-            continue
+        # else:
+        #     print(f"Skipping {rotation_plane_id} as it already exists")
+        #     continue
 
         for angle in range(0, 360, 10):
             print(
@@ -470,6 +471,6 @@ if __name__ == "__main__":
                 data_type="harmful",
                 language="en",
                 output_path="/home/ian/repos/llm-activation-control/output/",
-                included_direction_ids=["max_norm", "pca_0"],
+                included_direction_ids=[MAX_SIM_DIR_ID[model_id], "pca_0"],
                 adaptive_mode=1,
             )

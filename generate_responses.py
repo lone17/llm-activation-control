@@ -1,32 +1,44 @@
 import json
+import logging
 from pathlib import Path
 
 from vllm import LLM
 from vllm.control_vectors.request import ControlVectorRequest
 from vllm.sampling_params import SamplingParams
 
+from configs import MAX_NORM_DIR_ID, MAX_SIM_DIR_ID
 from llm_activation_control.utils import get_input_data
+
+logging.basicConfig(level=getattr(logging, "INFO", logging.INFO))
+logger = logging.getLogger(__name__)
 
 data_type = "harmful"
 language_id = "en"
 model_ids = [
-    # "Qwen/Qwen2.5-3B-Instruct",
+    "Qwen/Qwen2.5-3B-Instruct",
     "Qwen/Qwen2.5-7B-Instruct",
-    # "Qwen/Qwen2.5-14B-Instruct",
-    # "meta-llama/Llama-3.2-3B-Instruct",
-    # "meta-llama/Llama-3.1-8B-Instruct",
-    # "google/gemma-2-9b-it",
+    "Qwen/Qwen2.5-14B-Instruct",
+    "meta-llama/Llama-3.2-3B-Instruct",
+    "meta-llama/Llama-3.1-8B-Instruct",
+    "google/gemma-2-9b-it",
 ]
-included_direction_ids = ["max_simm"]
-excluded_direction_ids = ["dir_random"]
+# included_direction_ids = ["max_sim"]
+excluded_direction_ids = [
+    "dir_random",
+    # "pca_0"
+]
 adaptive_mode = 1
 
 sampling_params = SamplingParams(temperature=0, max_tokens=512)
 
 
 for model_id in model_ids:
+    logger.info(f"Processing model: {model_id}")
+
     model_family, model_name = model_id.split("/")
     output_path = Path("output") / model_name
+
+    included_direction_ids = [MAX_SIM_DIR_ID[model_id]]
 
     data_train, data_test = get_input_data(data_type, language_id)
 
@@ -65,7 +77,7 @@ for model_id in model_ids:
             if lang_code != language_id and lang_code != "xx":
                 continue
         except ValueError:
-            print(f"Skipping {steering_config_file}")
+            logger.info(f"Skipping {steering_config_file} due to format mismatch.")
             continue
 
         if any(
@@ -75,12 +87,15 @@ for model_id in model_ids:
             included_dir_id not in steering_config_file.stem
             for included_dir_id in included_direction_ids
         ):
-            print(f"Skipping {steering_config_file}")
+            logger.info(
+                f"Skipping {steering_config_file} due to direction ID mismatch."
+            )
             continue
 
-        print(f"Processing {steering_config_file}")
+        logger.info(f"Processing {steering_config_file}")
         steered_responses = {}
         for degree in range(0, 360, 10):
+            logger.info(f"Steering at degree: {degree}")
             control_vector_name = f"{steering_config_file.stem}-target_degree_{degree}"
             control_vector_id = abs(hash((control_vector_name, degree))) % 999999
             control_vector_request = ControlVectorRequest(
@@ -103,6 +118,11 @@ for model_id in model_ids:
 
         adaptive_mode_label = (
             "rotated" if adaptive_mode == 0 else f"adaptive_{adaptive_mode}"
+        )
+
+        logger.info(
+            f"Saving responses for {model_name} in {lang_code} with dirs {first_dir},"
+            f" {second_dir}, adaptive mode: {adaptive_mode_label}"
         )
         with open(
             output_path
