@@ -1,15 +1,20 @@
+import os
+import sys
 import time
 from functools import cache
 from pathlib import Path
 from traceback import print_exc
-from typing import Any, Dict, List, Optional
+from typing import List
 
-import vllm  # assuming vllm is installed and contains class LLM
+import uvicorn
+import vllm  # assuming the vllm fork with control vectors is installed
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from transformers import AutoTokenizer
 from vllm.control_vectors.request import ControlVectorRequest
 from vllm.sampling_params import SamplingParams
+
+from configs import MAX_SIM_DIR_ID
 
 
 # New request model for OpenAI chat completions
@@ -63,16 +68,28 @@ app = FastAPI()
 
 data_type = "harmful"
 LANGUAGE = "en"
-model_id = (
-    # "Qwen/Qwen2.5-3B-Instruct"  # 9900
-    "Qwen/Qwen2.5-7B-Instruct"  # 9901
-    # "Qwen/Qwen2.5-14B-Instruct"  # 9902
-    # "Qwen/Qwen2.5-32B-Instruct"  # 9903
-    # "meta-llama/Llama-3.2-3B-Instruct"  # 9004
-    # "meta-llama/Llama-3.1-8B-Instruct"  # 9005
-    # "google/gemma-2-9b-it"  # 9006
-)
-direction_id = "dir_max_norm"
+
+# Get model_id from environment variable or command line argument
+if len(sys.argv) > 1:
+    model_id = sys.argv[1]
+else:
+    raise ValueError("Model ID must be provided as a command line argument.")
+
+MODEL_PORTS = {
+    "Qwen/Qwen2.5-3B-Instruct": 9901,
+    "Qwen/Qwen2.5-7B-Instruct": 9902,
+    "Qwen/Qwen2.5-14B-Instruct": 9903,
+    "meta-llama/Llama-3.2-3B-Instruct": 9904,
+    "meta-llama/Llama-3.1-8B-Instruct": 9905,
+    "google/gemma-2-9b-it": 9906,
+}
+
+# Get the port for the current model
+if model_id not in MODEL_PORTS:
+    raise ValueError(f"Model ID {model_id} is not recognized.")
+port = MODEL_PORTS.get(model_id)
+
+direction_id = MAX_SIM_DIR_ID[model_id]
 llm = get_model(model_id)
 tokenizer = AutoTokenizer.from_pretrained(model_id)
 
@@ -326,3 +343,9 @@ async def create_chat_completion_with_steering(
     except Exception as e:
         print_exc()
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+# Add this at the bottom of the file
+if __name__ == "__main__":
+    print(f"Starting server for model: {model_id} on port: {port}")
+    uvicorn.run(app, host="0.0.0.0", port=port)
