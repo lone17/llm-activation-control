@@ -3,6 +3,4 @@ wandb*
 __pycache__/
 .ipynb_checkpoints/
 *.egg-info/
-output/**/tinyArc/
-benchmarks/max_norm/
 benchmarks/**/samples*
