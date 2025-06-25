@@ -10,7 +10,7 @@ import litellm
 import numpy as np
 import torch
 from transformers import AutoTokenizer
-from configs import MAX_SIM_DIR_ID
+from configs import MAX_NORM_DIR_ID, MAX_SIM_DIR_ID
 from vllm import LLM, SamplingParams
 from vllm.distributed.parallel_state import destroy_model_parallel
 
@@ -179,7 +179,7 @@ def substring_matching_judge_fn(
     )
 
 
-judge_vllm_server = "http://0.0.0.0:8809/v1"
+judge_vllm_server = "http://0.0.0.0:8808/v1"
 judge_model_id = "hosted_vllm/Qwen/QVQ-72B-Preview"
 
 
@@ -471,6 +471,6 @@ if __name__ == "__main__":
                 data_type="harmful",
                 language="en",
                 output_path="/home/ian/repos/llm-activation-control/output/",
-                included_direction_ids=[MAX_SIM_DIR_ID[model_id], "pca_0"],
+                included_direction_ids=[MAX_NORM_DIR_ID[model_id], "pca_0"],
                 adaptive_mode=1,
             )

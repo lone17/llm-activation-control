@@ -15,17 +15,17 @@ logger = logging.getLogger(__name__)
 data_type = "harmful"
 language_id = "en"
 model_ids = [
-    "Qwen/Qwen2.5-3B-Instruct",
-    "Qwen/Qwen2.5-7B-Instruct",
-    "Qwen/Qwen2.5-14B-Instruct",
-    "meta-llama/Llama-3.2-3B-Instruct",
+    # "Qwen/Qwen2.5-3B-Instruct",
+    # "Qwen/Qwen2.5-7B-Instruct",
+    # "Qwen/Qwen2.5-14B-Instruct",
+    # "meta-llama/Llama-3.2-3B-Instruct",
     "meta-llama/Llama-3.1-8B-Instruct",
     "google/gemma-2-9b-it",
 ]
 # included_direction_ids = ["max_sim"]
 excluded_direction_ids = [
-    "dir_random",
-    # "pca_0"
+    # "dir_random",
+    "pca_0"
 ]
 adaptive_mode = 1
 
@@ -39,6 +39,7 @@ for model_id in model_ids:
     output_path = Path("output") / model_name
 
     included_direction_ids = [MAX_SIM_DIR_ID[model_id]]
+    # included_direction_ids = [MAX_NORM_DIR_ID[model_id]]
 
     data_train, data_test = get_input_data(data_type, language_id)
 
@@ -92,7 +93,7 @@ for model_id in model_ids:
             )
             continue
 
-        logger.info(f"Processing {steering_config_file}")
+        logger.info(f"=== Processing {steering_config_file}")
         steered_responses = {}
         for degree in range(0, 360, 10):
             logger.info(f"Steering at degree: {degree}")
