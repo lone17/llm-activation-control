@@ -20,11 +20,11 @@ declare -A MODEL_PORTS=(
 
 MODELS=(
     # Qwen/Qwen2.5-3B-Instruct
-    # Qwen/Qwen2.5-7B-Instruct
+    Qwen/Qwen2.5-7B-Instruct
     # Qwen/Qwen2.5-14B-Instruct
     # meta-llama/Llama-3.2-3B-Instruct
     # meta-llama/Llama-3.1-8B-Instruct
-    google/gemma-2-9b-it
+    # google/gemma-2-9b-it
 )
 
 dir_id=max_sim

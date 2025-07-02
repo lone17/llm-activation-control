@@ -1,5 +1,4 @@
 import json
-from functools import cache
 from pathlib import Path
 
 import vllm
@@ -8,7 +7,16 @@ from transformers import AutoTokenizer
 from vllm.control_vectors.request import ControlVectorRequest
 from vllm.sampling_params import SamplingParams
 
+from configs import MAX_SIM_DIR_ID, MAX_NORM_DIR_ID
 from llm_activation_control.utils import get_input_data
+
+
+dir_id = "max_sim"
+
+if dir_id == "max_sim":
+    DIR_ID_MAP = MAX_SIM_DIR_ID
+elif dir_id == "max_norm":
+    DIR_ID_MAP = MAX_NORM_DIR_ID
 
 
 def get_output_files(output_path, included_terms, excluded_terms) -> list[Path]:
@@ -147,12 +155,12 @@ data_type = "harmful"
 language_id = "en"
 generation_only = False
 model_ids = (
-    # "Qwen/Qwen2.5-3B-Instruct",
-    # "meta-llama/Llama-3.2-3B-Instruct",
+    "Qwen/Qwen2.5-3B-Instruct",
     # "Qwen/Qwen2.5-7B-Instruct",
     "Qwen/Qwen2.5-14B-Instruct",
-    # "meta-llama/Llama-3.1-8B-Instruct",
+    "meta-llama/Llama-3.2-3B-Instruct",
     # "google/gemma-2-9b-it",
+    # "meta-llama/Llama-3.1-8B-Instruct",
 )
 train_data, input_data = get_input_data(data_type, language_id)
 
@@ -160,7 +168,7 @@ for model_id in model_ids:
     model_family, model_name = model_id.split("/")
     data_path = Path("output/") / model_name
 
-    included_config_terms = ["max_sim", "baseline"]
+    included_config_terms = [DIR_ID_MAP[model_id], "baseline"]
     excluded_config_terms = ["dir_random"]
 
     tokenizer = AutoTokenizer.from_pretrained(model_id)

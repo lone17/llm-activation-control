@@ -19,15 +19,17 @@ model_ids = [
     # "Qwen/Qwen2.5-7B-Instruct",
     # "Qwen/Qwen2.5-14B-Instruct",
     # "meta-llama/Llama-3.2-3B-Instruct",
-    "meta-llama/Llama-3.1-8B-Instruct",
+    # "meta-llama/Llama-3.1-8B-Instruct",
     "google/gemma-2-9b-it",
 ]
 # included_direction_ids = ["max_sim"]
 excluded_direction_ids = [
-    # "dir_random",
-    "pca_0"
+    "dir_random",
+    # "pca_0"
 ]
 adaptive_mode = 1
+
+DIR_ID = MAX_SIM_DIR_ID
 
 sampling_params = SamplingParams(temperature=0, max_tokens=512)
 
@@ -38,8 +40,7 @@ for model_id in model_ids:
     model_family, model_name = model_id.split("/")
     output_path = Path("output") / model_name
 
-    included_direction_ids = [MAX_SIM_DIR_ID[model_id]]
-    # included_direction_ids = [MAX_NORM_DIR_ID[model_id]]
+    included_direction_ids = [DIR_ID[model_id]]
 
     data_train, data_test = get_input_data(data_type, language_id)
 
