@@ -458,9 +458,9 @@ if __name__ == "__main__":
 
     methods = [
         # "substring_matching",
-        # "llamaguard3",
+        "llamaguard3",
         # "harmbench",
-        "llmjudge",
+        # "llmjudge",
     ]
 
     for method in methods:
@@ -471,6 +471,6 @@ if __name__ == "__main__":
                 data_type="harmful",
                 language="en",
                 output_path="/home/ian/repos/llm-activation-control/output/",
-                included_direction_ids=[MAX_NORM_DIR_ID[model_id], "pca_0"],
+                included_direction_ids=[MAX_SIM_DIR_ID[model_id], "pca_0"],
                 adaptive_mode=1,
             )

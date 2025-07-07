@@ -20,8 +20,8 @@ declare -A MODEL_PORTS=(
 
 MODELS=(
     # Qwen/Qwen2.5-3B-Instruct
-    Qwen/Qwen2.5-7B-Instruct
-    # Qwen/Qwen2.5-14B-Instruct
+    # Qwen/Qwen2.5-7B-Instruct
+    Qwen/Qwen2.5-14B-Instruct
     # meta-llama/Llama-3.2-3B-Instruct
     # meta-llama/Llama-3.1-8B-Instruct
     # google/gemma-2-9b-it
@@ -39,7 +39,7 @@ for model_id in "${MODELS[@]}"; do
             --model local-completions \
             --tasks ${task} \
             --batch_size 1 \
-            --model_args model=${model_id},base_url=http://0.0.0.0:${port}/angular_steering/none,num_concurrent=1,max_retries=3,tokenized_requests=False,max_length=4096 \
+            --model_args model=${model_id},base_url=http://0.0.0.0:${port}/angular_steering/none,num_concurrent=1,max_retries=3,tokenized_requests=False,max_gen_toks=4096 \
             --output_path ./benchmarks/${dir_id}/${task}/${model_name}/adaptive_none \
             --wandb_args project=lm-eval-angular-steering,entity=lone17,id=${model_name}+${task}+adaptive_none+${dir_id} \
             --log_samples
@@ -51,7 +51,7 @@ for model_id in "${MODELS[@]}"; do
                 --model local-completions \
                 --tasks ${task} \
                 --batch_size 1 \
-                --model_args model=${model_id},base_url=http://0.0.0.0:${port}/angular_steering/${angle},num_concurrent=1,max_retries=3,tokenized_requests=False,max_length=4096 \
+                --model_args model=${model_id},base_url=http://0.0.0.0:${port}/angular_steering/${angle},num_concurrent=1,max_retries=3,tokenized_requests=False,max_gen_toks=4096 \
                 --output_path ./benchmarks/${dir_id}/${task}/${model_name}/adaptive_${angle} \
                 --wandb_args project=lm-eval-angular-steering,entity=lone17,id=${model_name}+${task}+adaptive_${angle}+${dir_id} \
                 --log_samples
